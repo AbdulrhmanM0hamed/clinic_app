@@ -4,8 +4,17 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import '../core/theme/app_theme.dart';
 import '../core/widgets/clinic_app_shell.dart';
 import '../features/auth/presentation/login_page.dart';
-import 'app_controller.dart';
-import 'clinic_app_scope.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../core/di/dependency_injection.dart';
+import '../features/auth/presentation/cubits/auth_cubit.dart';
+import '../features/diagnosis/presentation/cubits/diagnosis_cubit.dart';
+import '../features/invoices/presentation/cubits/invoices_cubit.dart';
+import '../features/laboratory/presentation/cubits/laboratory_cubit.dart';
+import '../features/patients/presentation/cubits/patients_cubit.dart';
+import '../features/reception/presentation/cubits/reception_cubit.dart';
+import '../features/reports/presentation/cubits/reports_cubit.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 
 class ClinicApp extends StatefulWidget {
   const ClinicApp({super.key});
@@ -15,46 +24,38 @@ class ClinicApp extends StatefulWidget {
 }
 
 class _ClinicAppState extends State<ClinicApp> {
-  late final ClinicAppController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = ClinicAppController();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
+  final bool _isLoggedIn = Supabase.instance.client.auth.currentSession != null;
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, _) {
-        return MaterialApp(
-          debugShowCheckedModeBanner: false,
-          title: 'عيادتي',
-          theme: AppTheme.lightTheme,
-          locale: const Locale('ar'),
-          supportedLocales: const [Locale('ar'), Locale('en')],
-          localizationsDelegates: const [
-            GlobalMaterialLocalizations.delegate,
-            GlobalWidgetsLocalizations.delegate,
-            GlobalCupertinoLocalizations.delegate,
-          ],
-          builder: (context, child) {
-            return ClinicAppScope(
-              controller: _controller,
-              child: child ?? const SizedBox.shrink(),
-            );
-          },
-          home: _controller.isLoggedIn
-              ? const ClinicAppShell()
-              : const LoginPage(),
-        );
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'عيادتي',
+      theme: AppTheme.lightTheme,
+      locale: const Locale('ar'),
+      supportedLocales: const [Locale('ar'), Locale('en')],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      initialRoute: _isLoggedIn ? '/dashboard' : '/',
+      routes: {
+        '/': (context) => BlocProvider(
+          create: (context) => sl<AuthCubit>(),
+          child: const LoginPage(),
+        ),
+        '/dashboard': (context) => MultiBlocProvider(
+              providers: [
+                BlocProvider(create: (_) => sl<PatientsCubit>()..fetchPatients()),
+                BlocProvider(create: (_) => sl<ReceptionCubit>()..fetchRecords()),
+                BlocProvider(create: (_) => sl<LaboratoryCubit>()..fetchOrders()),
+                BlocProvider(create: (_) => sl<DiagnosisCubit>()..fetchCases()),
+                BlocProvider(create: (_) => sl<InvoicesCubit>()..fetchInvoices()),
+                BlocProvider(create: (_) => sl<ReportsCubit>()..fetchReports()),
+              ],
+              child: const ClinicAppShell(),
+            ),
       },
     );
   }

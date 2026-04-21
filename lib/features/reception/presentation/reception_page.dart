@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../../../app/app_controller.dart';
-import '../../../app/clinic_app_scope.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import 'cubits/reception_cubit.dart';
+import '../../invoices/presentation/cubits/invoices_cubit.dart';
 import '../../../core/models/clinic_models.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/clinic_formatters.dart';
@@ -92,8 +94,10 @@ class _ReceptionPageState extends State<ReceptionPage> {
       return;
     }
 
-    final controller = ClinicAppScope.of(context);
-    final invoice = controller.saveReceptionRecord(
+    final patient = PatientProfile(
+      id:
+          _editingRecordId ??
+          '', // Empty string for new, signals DB to generate UUID
       fullName: _nameController.text.trim(),
       nationality: _nationalityController.text.trim(),
       nationalId: _nationalIdController.text.trim(),
@@ -101,40 +105,40 @@ class _ReceptionPageState extends State<ReceptionPage> {
       phoneNumber: _phoneController.text.trim(),
       address: _addressController.text.trim(),
       workplace: _workplaceController.text.trim(),
+    );
+
+    final recordCreatedAt = _editingCreatedAt ?? DateTime.now();
+    final invoiceId = _editingInvoiceId ?? ''; // Empty string for new
+
+    final record = ReceptionRecord(
+      id: _editingRecordId ?? '', // Empty string for new
+      patient: patient,
       visitType: _visitType,
       notes: _notesController.text.trim(),
       amount: amount,
-      existingRecordId: _editingRecordId,
-      existingInvoiceId: _editingInvoiceId,
-      createdAt: _editingCreatedAt,
+      createdAt: recordCreatedAt,
+      invoiceId: invoiceId,
     );
+
+    final invoice = ClinicInvoice(
+      id: invoiceId,
+      patientName: patient.fullName,
+      phoneNumber: patient.phoneNumber,
+      nationalId: patient.nationalId,
+      serviceLabel: _visitType.label,
+      source: CaseSource.reception,
+      amount: amount,
+      createdAt: recordCreatedAt,
+      notes: record.notes.isEmpty ? 'مراجعة استقبال' : record.notes,
+      nationality: patient.nationality,
+      birthDate: patient.birthDate,
+    );
+
+    context.read<ReceptionCubit>().addRecord(record, patient, invoice);
 
     if (!mounted) {
       return;
     }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          _isEditing
-              ? 'تم تحديث بيانات الاستقبال والفاتورة بنجاح.'
-              : 'تم حفظ بيانات الاستقبال وإضافة الفاتورة بنجاح.',
-        ),
-      ),
-    );
-
-    if (printAfterSaving) {
-      await InvoicePdfService.printInvoice(
-        invoice: invoice,
-        doctorName: controller.doctorName,
-      );
-    }
-
-    if (!mounted) {
-      return;
-    }
-
-    _resetForm();
   }
 
   void _loadRecordForEditing(ReceptionRecord record) {
@@ -176,109 +180,140 @@ class _ReceptionPageState extends State<ReceptionPage> {
   }
 
   Future<void> _shareInvoice(ClinicInvoice invoice) async {
-    final controller = ClinicAppScope.of(context);
     await InvoicePdfService.shareInvoice(
       invoice: invoice,
-      doctorName: controller.doctorName,
+      doctorName: 'طبيب معتمد',
     );
   }
 
   Future<void> _printInvoice(ClinicInvoice invoice) async {
-    final controller = ClinicAppScope.of(context);
     await InvoicePdfService.printInvoice(
       invoice: invoice,
-      doctorName: controller.doctorName,
+      doctorName: 'طبيب معتمد',
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final controller = ClinicAppScope.of(context);
-    final width = MediaQuery.of(context).size.width;
-    final isWide = width >= 1180;
-    final recentRecords = controller.receptionRecords.take(6).toList();
-
-    return SingleChildScrollView(
-      padding: EdgeInsets.all(isWide ? 28 : 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(26),
-            decoration: BoxDecoration(
-              color: AppTheme.softBackground,
-              borderRadius: BorderRadius.circular(30),
-              border: Border.all(color: AppTheme.border),
+    return BlocConsumer<ReceptionCubit, ReceptionState>(
+      listener: (context, state) {
+        if (state is ReceptionOperationSuccess) {
+          _resetForm();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('تم حفظ البيانات بنجاح في قاعدة البيانات.'),
+              backgroundColor: Colors.green,
             ),
-            child: Wrap(
-              spacing: 16,
-              runSpacing: 16,
-              alignment: WrapAlignment.spaceBetween,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          );
+        } else if (state is ReceptionOperationError) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(state.message), backgroundColor: Colors.red),
+          );
+        }
+      },
+      builder: (context, state) {
+        if (state is ReceptionLoading) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        List<ReceptionRecord> records = [];
+        if (state is ReceptionLoaded ||
+            state is ReceptionOperationLoading ||
+            state is ReceptionOperationSuccess ||
+            state is ReceptionOperationError) {
+          if (state is ReceptionLoaded) records = state.records;
+          if (state is ReceptionOperationLoading) records = state.records;
+          if (state is ReceptionOperationSuccess) records = state.records;
+          if (state is ReceptionOperationError) records = state.records;
+        }
+
+        final width = MediaQuery.of(context).size.width;
+        final isWide = width >= 1180;
+        final recentRecords = records.take(6).toList();
+
+        return SingleChildScrollView(
+          padding: EdgeInsets.all(isWide ? 28 : 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(26),
+                decoration: BoxDecoration(
+                  color: AppTheme.softBackground,
+                  borderRadius: BorderRadius.circular(30),
+                  border: Border.all(color: AppTheme.border),
+                ),
+                child: Wrap(
+                  spacing: 16,
+                  runSpacing: 16,
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
+                    const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        StatusChip(
+                          label: 'الاستقبال',
+                          color: AppTheme.primary,
+                          icon: Icons.person_add_alt_1_rounded,
+                        ),
+                        SizedBox(height: 14),
+                        Text(
+                          'إدارة دخول المرضى والفواتير العلاجية',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w900,
+                            color: AppTheme.ink,
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          'املأ بيانات المريض، حدّد نوع الخدمة، ثم احفظ أو اطبع الفاتورة مباشرة.',
+                          style: TextStyle(color: AppTheme.mutedText),
+                        ),
+                      ],
+                    ),
                     StatusChip(
-                      label: 'الاستقبال',
-                      color: AppTheme.primary,
-                      icon: Icons.person_add_alt_1_rounded,
-                    ),
-                    SizedBox(height: 14),
-                    Text(
-                      'إدارة دخول المرضى والفواتير العلاجية',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w900,
-                        color: AppTheme.ink,
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      'املأ بيانات المريض، حدّد نوع الخدمة، ثم احفظ أو اطبع الفاتورة مباشرة.',
-                      style: TextStyle(color: AppTheme.mutedText),
+                      label: _age == null
+                          ? 'العمر سيظهر تلقائيًا'
+                          : 'العمر: $_age سنة',
+                      color: AppTheme.accent,
+                      icon: Icons.cake_rounded,
                     ),
                   ],
                 ),
-                StatusChip(
-                  label: _age == null
-                      ? 'العمر سيظهر تلقائيًا'
-                      : 'العمر: $_age سنة',
-                  color: AppTheme.accent,
-                  icon: Icons.cake_rounded,
-                ),
+              ),
+              const SizedBox(height: 24),
+              if (isWide)
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(flex: 7, child: _buildFormCard()),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      flex: 5,
+                      child: Column(
+                        children: [
+                          _buildOperationsCard(recentRecords),
+                          const SizedBox(height: 16),
+                          //   _buildHelpCard(),
+                        ],
+                      ),
+                    ),
+                  ],
+                )
+              else ...[
+                _buildFormCard(),
+                const SizedBox(height: 16),
+                _buildOperationsCard(recentRecords),
+                const SizedBox(height: 16),
+                //    _buildHelpCard(),
               ],
-            ),
+            ],
           ),
-          const SizedBox(height: 24),
-          if (isWide)
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(flex: 7, child: _buildFormCard()),
-                const SizedBox(width: 16),
-                Expanded(
-                  flex: 5,
-                  child: Column(
-                    children: [
-                      _buildOperationsCard(recentRecords, controller),
-                      const SizedBox(height: 16),
-                      _buildHelpCard(),
-                    ],
-                  ),
-                ),
-              ],
-            )
-          else ...[
-            _buildFormCard(),
-            const SizedBox(height: 16),
-            _buildOperationsCard(recentRecords, controller),
-            const SizedBox(height: 16),
-            _buildHelpCard(),
-          ],
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -493,10 +528,7 @@ class _ReceptionPageState extends State<ReceptionPage> {
     );
   }
 
-  Widget _buildOperationsCard(
-    List<ReceptionRecord> recentRecords,
-    ClinicAppController controller,
-  ) {
+  Widget _buildOperationsCard(List<ReceptionRecord> recentRecords) {
     return SectionCard(
       title: 'آخر عمليات الاستقبال',
       subtitle:
@@ -509,7 +541,16 @@ class _ReceptionPageState extends State<ReceptionPage> {
             )
           : Column(
               children: recentRecords.map((record) {
-                final invoice = controller.invoiceById(record.invoiceId);
+                final invoicesState = context.read<InvoicesCubit>().state;
+                ClinicInvoice? invoice;
+                if (invoicesState is InvoicesLoaded) {
+                  invoice = invoicesState.invoices
+                      .cast<ClinicInvoice?>()
+                      .firstWhere(
+                        (inv) => inv?.id == record.invoiceId,
+                        orElse: () => null,
+                      );
+                }
                 return Container(
                   margin: const EdgeInsets.only(bottom: 14),
                   padding: const EdgeInsets.all(18),
@@ -587,29 +628,41 @@ class _ReceptionPageState extends State<ReceptionPage> {
                                   ),
                                   if (invoice != null) ...[
                                     const SizedBox(width: 8),
-                                    IconButton(
-                                      padding: EdgeInsets.zero,
-                                      constraints: const BoxConstraints(),
-                                      onPressed: () => _shareInvoice(invoice),
-                                      icon: const Icon(
-                                        Icons.file_download_outlined,
-                                        size: 20,
-                                        color: AppTheme.mutedText,
-                                      ),
-                                      tooltip: 'PDF',
-                                    ),
-                                    const SizedBox(width: 8),
-                                    IconButton(
-                                      padding: EdgeInsets.zero,
-                                      constraints: const BoxConstraints(),
-                                      onPressed: () => _printInvoice(invoice),
-                                      icon: const Icon(
-                                        Icons.print_rounded,
-                                        size: 20,
-                                        color: AppTheme.primary,
-                                      ),
-                                      tooltip: 'طباعة',
-                                    ),
+                                    (() {
+                                      final nonNullableInvoice = invoice!;
+                                      return Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          IconButton(
+                                            padding: EdgeInsets.zero,
+                                            constraints: const BoxConstraints(),
+                                            onPressed: () => _shareInvoice(
+                                              nonNullableInvoice,
+                                            ),
+                                            icon: const Icon(
+                                              Icons.file_download_outlined,
+                                              size: 20,
+                                              color: AppTheme.mutedText,
+                                            ),
+                                            tooltip: 'PDF',
+                                          ),
+                                          const SizedBox(width: 8),
+                                          IconButton(
+                                            padding: EdgeInsets.zero,
+                                            constraints: const BoxConstraints(),
+                                            onPressed: () => _printInvoice(
+                                              nonNullableInvoice,
+                                            ),
+                                            icon: const Icon(
+                                              Icons.print_rounded,
+                                              size: 20,
+                                              color: AppTheme.primary,
+                                            ),
+                                            tooltip: 'طباعة',
+                                          ),
+                                        ],
+                                      );
+                                    })(),
                                   ],
                                 ],
                               ),

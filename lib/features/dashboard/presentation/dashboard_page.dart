@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 
-import '../../../app/clinic_app_scope.dart';
+import '../../../../core/models/clinic_models.dart';
 import 'widgets/dashboard_charts_section.dart';
-import 'widgets/dashboard_hero.dart';
 import 'widgets/dashboard_metrics_section.dart';
 import 'widgets/dashboard_shortcuts_section.dart';
 
 class DashboardPage extends StatelessWidget {
-  const DashboardPage({super.key});
+  const DashboardPage({super.key, this.onSelectSection});
+
+  final void Function(ClinicSection section)? onSelectSection;
 
   @override
   Widget build(BuildContext context) {
-    final controller = ClinicAppScope.of(context);
     final width = MediaQuery.of(context).size.width;
     final isWide = width >= 1100;
     // On wide screens, 4 cards in a row. On smaller screens, 2 in a row (grid).
@@ -22,13 +22,16 @@ class DashboardPage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          //   DashboardHero(controller: controller),
+          //    const DashboardHero(),
           const SizedBox(height: 24),
-          DashboardShortcutsSection(controller: controller, isWide: isWide),
+          DashboardShortcutsSection(
+            onSelectSection: onSelectSection ?? (_) {},
+            isWide: isWide,
+          ),
           const SizedBox(height: 24),
-          DashboardMetricsSection(controller: controller, cardWidth: cardWidth),
+          DashboardMetricsSection(cardWidth: cardWidth),
           const SizedBox(height: 24),
-          DashboardChartsSection(controller: controller, isWide: isWide),
+          DashboardChartsSection(isWide: isWide),
         ],
       ),
     );

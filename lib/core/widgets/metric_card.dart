@@ -62,7 +62,7 @@ class MetricCard extends StatelessWidget {
                     fontWeight: FontWeight.w800,
                     fontSize: 12,
                   ),
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
@@ -70,7 +70,7 @@ class MetricCard extends StatelessWidget {
                   value,
                   style: theme.textTheme.headlineMedium?.copyWith(
                     fontWeight: FontWeight.w900,
-                    fontSize: 20,
+                    fontSize: 16,
                     letterSpacing: -0.5,
                   ),
                   maxLines: 1,

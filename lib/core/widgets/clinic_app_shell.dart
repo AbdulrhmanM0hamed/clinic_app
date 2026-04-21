@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../app/clinic_app_scope.dart';
 import '../../features/dashboard/presentation/dashboard_page.dart';
 import '../../features/diagnosis/presentation/diagnosis_page.dart';
 import '../../features/laboratory/presentation/laboratory_page.dart';
@@ -11,12 +10,33 @@ import '../theme/app_theme.dart';
 import 'clinic_app_sidebar.dart';
 import 'status_chip.dart';
 
-class ClinicAppShell extends StatelessWidget {
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+class ClinicAppShell extends StatefulWidget {
   const ClinicAppShell({super.key});
 
   @override
+  State<ClinicAppShell> createState() => _ClinicAppShellState();
+}
+
+class _ClinicAppShellState extends State<ClinicAppShell> {
+  ClinicSection _selectedSection = ClinicSection.dashboard;
+
+  void _selectSection(ClinicSection section) {
+    setState(() {
+      _selectedSection = section;
+    });
+  }
+
+  void _logout() async {
+    await Supabase.instance.client.auth.signOut();
+    if (mounted) {
+      Navigator.of(context).pushReplacementNamed('/'); // ensure routes exist
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final controller = ClinicAppScope.of(context);
     final width = MediaQuery.of(context).size.width;
     final isWide = width >= 1080;
     final items = _navigationItems;
@@ -30,14 +50,14 @@ class ClinicAppShell extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              controller.clinicName,
+              'أهلاً بك',
               style: Theme.of(
                 context,
               ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
             ),
             const SizedBox(height: 2),
             Text(
-              _titleForSection(controller.selectedSection),
+              _titleForSection(_selectedSection),
               style: Theme.of(context).textTheme.bodyMedium,
             ),
           ],
@@ -47,15 +67,14 @@ class ClinicAppShell extends StatelessWidget {
             Padding(
               padding: const EdgeInsetsDirectional.only(end: 12),
               child: StatusChip(
-                label:
-                    '${controller.doctorName} • ${controller.doctorSpecialty}',
+                label: 'طبيب معتمد',
                 color: AppTheme.primary,
                 icon: Icons.verified_user_rounded,
               ),
             ),
           IconButton(
             tooltip: 'تسجيل الخروج',
-            onPressed: controller.logout,
+            onPressed: _logout,
             icon: const Icon(Icons.logout_rounded),
           ),
           const SizedBox(width: 10),
@@ -73,17 +92,17 @@ class ClinicAppShell extends StatelessWidget {
                   bottom: 20,
                 ),
                 child: ClinicAppSidebar(
-                  selectedSection: controller.selectedSection,
+                  selectedSection: _selectedSection,
                   items: items,
-                  onSelect: controller.selectSection,
+                  onSelect: _selectSection,
                 ),
               ),
             Expanded(
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 250),
                 child: KeyedSubtree(
-                  key: ValueKey(controller.selectedSection),
-                  child: _buildPage(controller.selectedSection),
+                  key: ValueKey(_selectedSection),
+                  child: _buildPage(_selectedSection),
                 ),
               ),
             ),
@@ -93,9 +112,9 @@ class ClinicAppShell extends StatelessWidget {
       bottomNavigationBar: isWide
           ? null
           : NavigationBar(
-              selectedIndex: controller.selectedSection.index,
+              selectedIndex: _selectedSection.index,
               onDestinationSelected: (index) {
-                controller.selectSection(ClinicSection.values[index]);
+                _selectSection(ClinicSection.values[index]);
               },
               destinations: items
                   .map(
@@ -112,7 +131,7 @@ class ClinicAppShell extends StatelessWidget {
   Widget _buildPage(ClinicSection section) {
     switch (section) {
       case ClinicSection.dashboard:
-        return const DashboardPage();
+        return DashboardPage(onSelectSection: _selectSection);
       case ClinicSection.reception:
         return const ReceptionPage();
       case ClinicSection.laboratory:

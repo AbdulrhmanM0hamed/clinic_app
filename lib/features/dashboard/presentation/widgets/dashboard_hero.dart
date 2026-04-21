@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 
-import '../../../../app/app_controller.dart';
+
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/status_chip.dart';
 
 class DashboardHero extends StatelessWidget {
-  const DashboardHero({super.key, required this.controller});
-
-  final ClinicAppController controller;
+  const DashboardHero({super.key});
 
   @override
   Widget build(BuildContext context) {

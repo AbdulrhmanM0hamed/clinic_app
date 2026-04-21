@@ -49,7 +49,7 @@ class InvoicePdfService {
       pw.MultiPage(
         theme: theme,
         pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(28),
+        margin: const pw.EdgeInsets.all(20),
         build: (context) {
           return [
             pw.Directionality(
@@ -85,6 +85,21 @@ class InvoicePdfService {
                                 fontSize: 11,
                               ),
                             ),
+                            pw.Text(
+                              'رقم الفاتورة: ${invoice.id}',
+                              style: pw.TextStyle(
+                                color: PdfColors.white,
+                                fontSize: 11,
+                                fontWeight: pw.FontWeight.bold,
+                              ),
+                            ),
+                            pw.Text(
+                              "مجمع سندس طبيبة المعمل العام ",
+                              style: const pw.TextStyle(
+                                color: PdfColors.white,
+                                fontSize: 11,
+                              ),
+                            ),
                           ],
                         ),
                         pw.Container(
@@ -107,40 +122,43 @@ class InvoicePdfService {
                       ],
                     ),
                   ),
-                  pw.SizedBox(height: 24),
+                  pw.SizedBox(height: 16),
                   pw.TableHelper.fromTextArray(
                     headerAlignment: pw.Alignment.centerRight,
                     cellAlignment: pw.Alignment.centerRight,
                     cellPadding: const pw.EdgeInsets.symmetric(
                       horizontal: 12,
-                      vertical: 10,
+                      vertical: 6,
                     ),
                     headerDecoration: const pw.BoxDecoration(
                       color: PdfColors.grey300,
                     ),
-                    headers: const ['البيان', 'القيمة'],
+                    headers: const ['القيمة', 'البيان'],
                     data: [
-                      ['رقم الفاتورة', invoice.id],
-                      ['اسم المريض', invoice.patientName],
-                      ['القسم', invoice.source.label],
-                      ['الخدمة', invoice.serviceLabel],
-                      ['رقم الهوية', invoice.nationalId],
-                      ['رقم الجوال', invoice.phoneNumber],
-                      ['الطبيب المسؤول', doctorName],
+                      [invoice.patientName, 'اسم المريض'],
+                      [invoice.nationality, 'الجنسية'],
                       [
-                        'التاريخ',
-                        ClinicFormatters.formatDateTime(invoice.createdAt),
+                        ClinicFormatters.formatDate(invoice.birthDate),
+                        'تاريخ الميلاد',
                       ],
                       [
-                        'المبلغ',
-                        ClinicFormatters.formatCurrency(invoice.amount),
+                        '${DateTime.now().year - invoice.birthDate.year} سنة',
+                        'العمر',
+                      ],
+                      [invoice.serviceLabel, 'الخدمة'],
+                      [invoice.nationalId, 'رقم الهوية'],
+                      [invoice.phoneNumber, 'رقم الجوال'],
+                      [doctorName, 'الطبيب المسؤول'],
+                      [
+                        ClinicFormatters.formatDateTime(invoice.createdAt),
+                        'التاريخ',
                       ],
                     ],
                   ),
-                  pw.SizedBox(height: 24),
+                  pw.SizedBox(height: 16),
                   pw.Container(
                     width: double.infinity,
-                    padding: const pw.EdgeInsets.all(18),
+                    padding: const pw.EdgeInsets.all(12),
                     decoration: pw.BoxDecoration(
                       color: PdfColors.grey100,
                       borderRadius: pw.BorderRadius.circular(18),
@@ -160,12 +178,12 @@ class InvoicePdfService {
                       ],
                     ),
                   ),
-                  pw.SizedBox(height: 32),
+                  pw.SizedBox(height: 16),
                   pw.Container(
                     width: double.infinity,
-                    padding: const pw.EdgeInsets.all(18),
+                    padding: const pw.EdgeInsets.all(12),
                     decoration: pw.BoxDecoration(
-                      borderRadius: pw.BorderRadius.circular(18),
+                      borderRadius: pw.BorderRadius.circular(12),
                       border: pw.Border.all(color: PdfColors.teal200),
                     ),
                     child: pw.Row(

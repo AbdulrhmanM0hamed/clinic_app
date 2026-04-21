@@ -1,18 +1,15 @@
 import 'package:intl/intl.dart';
 
 class ClinicFormatters {
-  static final NumberFormat _currency = NumberFormat.currency(
-    locale: 'ar_EG',
-    symbol: 'ج.م',
-    decimalDigits: 0,
-  );
   static final DateFormat _shortDate = DateFormat('dd/MM/yyyy', 'ar');
   static final DateFormat _longDate = DateFormat('dd MMM yyyy', 'ar');
   static final DateFormat _dateTime = DateFormat('dd MMM - HH:mm', 'ar');
   static final DateFormat _monthLabel = DateFormat('MMM', 'ar');
   static final DateFormat _dayLabel = DateFormat('E', 'ar');
 
-  static String formatCurrency(double value) => _currency.format(value);
+  static String formatCurrency(double value) {
+    return '${value.toInt()} ريال';
+  }
 
   static String formatDate(DateTime value) => _shortDate.format(value);
 

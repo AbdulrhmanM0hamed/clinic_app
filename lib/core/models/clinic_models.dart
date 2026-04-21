@@ -174,6 +174,8 @@ class ClinicInvoice {
     required this.amount,
     required this.createdAt,
     required this.notes,
+    required this.nationality,
+    required this.birthDate,
   });
 
   final String id;
@@ -185,6 +187,8 @@ class ClinicInvoice {
   final double amount;
   final DateTime createdAt;
   final String notes;
+  final String nationality;
+  final DateTime birthDate;
 
   ClinicInvoice copyWith({
     String? id,
@@ -196,6 +200,8 @@ class ClinicInvoice {
     double? amount,
     DateTime? createdAt,
     String? notes,
+    String? nationality,
+    DateTime? birthDate,
   }) {
     return ClinicInvoice(
       id: id ?? this.id,
@@ -207,6 +213,8 @@ class ClinicInvoice {
       amount: amount ?? this.amount,
       createdAt: createdAt ?? this.createdAt,
       notes: notes ?? this.notes,
+      nationality: nationality ?? this.nationality,
+      birthDate: birthDate ?? this.birthDate,
     );
   }
 }

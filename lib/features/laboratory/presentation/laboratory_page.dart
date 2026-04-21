@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 
-import '../../../app/app_controller.dart';
-import '../../../app/clinic_app_scope.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import 'cubits/laboratory_cubit.dart';
+import '../../invoices/presentation/cubits/invoices_cubit.dart';
+import '../../reports/presentation/cubits/reports_cubit.dart';
 import '../../../core/models/clinic_models.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/clinic_formatters.dart';
@@ -101,40 +104,53 @@ class _LaboratoryPageState extends State<LaboratoryPage> {
       return;
     }
 
-    final controller = ClinicAppScope.of(context);
-    final invoice = controller.saveLaboratoryOrder(
+    final patient = PatientProfile(
+      id: _editingOrderId ?? '', // Signals DB to generate UUID
       fullName: _nameController.text.trim(),
       nationality: _nationalityController.text.trim(),
       nationalId: _nationalIdController.text.trim(),
       birthDate: _birthDate!,
       phoneNumber: _phoneController.text.trim(),
       address: _addressController.text.trim(),
+    );
+
+    final orderCreatedAt = _editingCreatedAt ?? DateTime.now();
+    final invoiceId = _editingInvoiceId ?? '';
+
+    final order = LaboratoryOrder(
+      id: _editingOrderId ?? '',
+      patient: patient,
       analysisType: _analysisType,
       notes: _notesController.text.trim(),
       amount: amount,
-      existingOrderId: _editingOrderId,
-      existingInvoiceId: _editingInvoiceId,
-      createdAt: _editingCreatedAt,
+      createdAt: orderCreatedAt,
+      invoiceId: invoiceId,
     );
+
+    final invoice = ClinicInvoice(
+      id: invoiceId,
+      patientName: patient.fullName,
+      phoneNumber: patient.phoneNumber,
+      nationalId: patient.nationalId,
+      serviceLabel: _analysisType,
+      source: CaseSource.laboratory,
+      amount: amount,
+      createdAt: orderCreatedAt,
+      notes: order.notes.isEmpty ? 'تحليل معمل' : order.notes,
+      nationality: patient.nationality,
+      birthDate: patient.birthDate,
+    );
+
+    context.read<LaboratoryCubit>().addOrder(order, patient, invoice);
 
     if (!mounted) {
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          _isEditing
-              ? 'تم تحديث طلب التحليل والفاتورة بنجاح.'
-              : 'تم حفظ طلب التحليل وإضافة الفاتورة بنجاح.',
-        ),
-      ),
-    );
-
     if (printAfterSaving) {
       await InvoicePdfService.printInvoice(
         invoice: invoice,
-        doctorName: controller.doctorName,
+        doctorName: 'طبيب معتمد',
       );
     }
 
@@ -190,110 +206,141 @@ class _LaboratoryPageState extends State<LaboratoryPage> {
   }
 
   Future<void> _shareInvoice(ClinicInvoice invoice) async {
-    final controller = ClinicAppScope.of(context);
     await InvoicePdfService.shareInvoice(
       invoice: invoice,
-      doctorName: controller.doctorName,
+      doctorName: 'طبيب معتمد',
     );
   }
 
   Future<void> _printInvoice(ClinicInvoice invoice) async {
-    final controller = ClinicAppScope.of(context);
     await InvoicePdfService.printInvoice(
       invoice: invoice,
-      doctorName: controller.doctorName,
+      doctorName: 'طبيب معتمد',
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final controller = ClinicAppScope.of(context);
-    final width = MediaQuery.of(context).size.width;
-    final isWide = width >= 1180;
-    final orders = controller.laboratoryOrders.take(6).toList();
-
-    return SingleChildScrollView(
-      controller: _scrollController,
-      padding: EdgeInsets.all(isWide ? 28 : 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(26),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF4FBFB),
-              borderRadius: BorderRadius.circular(30),
-              border: Border.all(color: AppTheme.border),
+    return BlocConsumer<LaboratoryCubit, LaboratoryState>(
+      listener: (context, state) {
+        if (state is LaboratoryOperationSuccess) {
+          _resetForm();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('تم حفظ التحليل بنجاح.'),
+              backgroundColor: Colors.green,
             ),
-            child: Wrap(
-              spacing: 16,
-              runSpacing: 16,
-              alignment: WrapAlignment.spaceBetween,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          );
+        } else if (state is LaboratoryOperationError) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(state.message), backgroundColor: Colors.red),
+          );
+        }
+      },
+      builder: (context, state) {
+        if (state is LaboratoryLoading) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        List<LaboratoryOrder> currentOrders = [];
+        if (state is LaboratoryLoaded ||
+            state is LaboratoryOperationLoading ||
+            state is LaboratoryOperationSuccess ||
+            state is LaboratoryOperationError) {
+          if (state is LaboratoryLoaded) currentOrders = state.orders;
+          if (state is LaboratoryOperationLoading) currentOrders = state.orders;
+          if (state is LaboratoryOperationSuccess) currentOrders = state.orders;
+          if (state is LaboratoryOperationError) currentOrders = state.orders;
+        }
+
+        final width = MediaQuery.of(context).size.width;
+        final isWide = width >= 1180;
+        final orders = currentOrders.take(6).toList();
+
+        return SingleChildScrollView(
+          controller: _scrollController,
+          padding: EdgeInsets.all(isWide ? 28 : 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(26),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF4FBFB),
+                  borderRadius: BorderRadius.circular(30),
+                  border: Border.all(color: AppTheme.border),
+                ),
+                child: Wrap(
+                  spacing: 16,
+                  runSpacing: 16,
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
+                    const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        StatusChip(
+                          label: 'التحاليل',
+                          color: AppTheme.secondary,
+                          icon: Icons.biotech_rounded,
+                        ),
+                        SizedBox(height: 14),
+                        Text(
+                          'تسجيل طلبات التحاليل وإصدار الفواتير',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w900,
+                            color: AppTheme.ink,
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          'الصفحة مجهزة لإدخال بيانات العميل، اختيار التحليل، ثم حفظ أو طباعة الفاتورة فورًا.',
+                          style: TextStyle(color: AppTheme.mutedText),
+                        ),
+                      ],
+                    ),
                     StatusChip(
-                      label: 'التحاليل',
-                      color: AppTheme.secondary,
-                      icon: Icons.biotech_rounded,
-                    ),
-                    SizedBox(height: 14),
-                    Text(
-                      'تسجيل طلبات التحاليل وإصدار الفواتير',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w900,
-                        color: AppTheme.ink,
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      'الصفحة مجهزة لإدخال بيانات العميل، اختيار التحليل، ثم حفظ أو طباعة الفاتورة فورًا.',
-                      style: TextStyle(color: AppTheme.mutedText),
+                      label: _age == null
+                          ? 'العمر سيُحتسب تلقائيًا'
+                          : 'العمر: $_age سنة',
+                      color: AppTheme.accent,
+                      icon: Icons.cake_rounded,
                     ),
                   ],
                 ),
-                StatusChip(
-                  label: _age == null
-                      ? 'العمر سيُحتسب تلقائيًا'
-                      : 'العمر: $_age سنة',
-                  color: AppTheme.accent,
-                  icon: Icons.cake_rounded,
-                ),
+              ),
+              const SizedBox(height: 24),
+              if (isWide)
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(flex: 7, child: _buildFormCard()),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      flex: 5,
+                      child: Column(
+                        children: [
+                          _buildOrdersCard(orders),
+                          const SizedBox(height: 16),
+                          //  _buildInsightsCard(context),
+                        ],
+                      ),
+                    ),
+                  ],
+                )
+              else ...[
+                _buildFormCard(),
+                const SizedBox(height: 16),
+                _buildOrdersCard(orders),
+                const SizedBox(height: 16),
+                //  _buildInsightsCard(context),
               ],
-            ),
+            ],
           ),
-          const SizedBox(height: 24),
-          if (isWide)
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(flex: 7, child: _buildFormCard()),
-                const SizedBox(width: 16),
-                Expanded(
-                  flex: 5,
-                  child: Column(
-                    children: [
-                      _buildOrdersCard(orders, controller),
-                      const SizedBox(height: 16),
-                      _buildInsightsCard(controller),
-                    ],
-                  ),
-                ),
-              ],
-            )
-          else ...[
-            _buildFormCard(),
-            const SizedBox(height: 16),
-            _buildOrdersCard(orders, controller),
-            const SizedBox(height: 16),
-            _buildInsightsCard(controller),
-          ],
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -500,10 +547,7 @@ class _LaboratoryPageState extends State<LaboratoryPage> {
     );
   }
 
-  Widget _buildOrdersCard(
-    List<LaboratoryOrder> orders,
-    ClinicAppController controller,
-  ) {
+  Widget _buildOrdersCard(List<LaboratoryOrder> orders) {
     return SectionCard(
       title: 'آخر طلبات التحاليل',
       subtitle: 'عدّل البيانات أو أعد حفظ الفاتورة وطباعتها مباشرة.',
@@ -516,7 +560,16 @@ class _LaboratoryPageState extends State<LaboratoryPage> {
             )
           : Column(
               children: orders.map((order) {
-                final invoice = controller.invoiceById(order.invoiceId);
+                final invoicesState = context.read<InvoicesCubit>().state;
+                ClinicInvoice? invoice;
+                if (invoicesState is InvoicesLoaded) {
+                  invoice = invoicesState.invoices
+                      .cast<ClinicInvoice?>()
+                      .firstWhere(
+                        (inv) => inv?.id == order.invoiceId,
+                        orElse: () => null,
+                      );
+                }
                 return Container(
                   margin: const EdgeInsets.only(bottom: 14),
                   padding: const EdgeInsets.all(18),
@@ -595,34 +648,44 @@ class _LaboratoryPageState extends State<LaboratoryPage> {
                                 tooltip: 'تعديل',
                               ),
                               if (invoice != null) ...[
-                                IconButton(
-                                  padding: EdgeInsets.zero,
-                                  constraints: const BoxConstraints(
-                                    minWidth: 32,
-                                    minHeight: 32,
-                                  ),
-                                  onPressed: () => _shareInvoice(invoice),
-                                  icon: const Icon(
-                                    Icons.file_download_outlined,
-                                    size: 24,
-                                    color: AppTheme.mutedText,
-                                  ),
-                                  tooltip: 'PDF',
-                                ),
-                                IconButton(
-                                  padding: EdgeInsets.zero,
-                                  constraints: const BoxConstraints(
-                                    minWidth: 32,
-                                    minHeight: 32,
-                                  ),
-                                  onPressed: () => _printInvoice(invoice),
-                                  icon: const Icon(
-                                    Icons.print_rounded,
-                                    size: 24,
-                                    color: AppTheme.primary,
-                                  ),
-                                  tooltip: 'طباعة',
-                                ),
+                                (() {
+                                  final nonNullableInvoice = invoice!;
+                                  return Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      IconButton(
+                                        padding: EdgeInsets.zero,
+                                        constraints: const BoxConstraints(
+                                          minWidth: 32,
+                                          minHeight: 32,
+                                        ),
+                                        onPressed: () =>
+                                            _shareInvoice(nonNullableInvoice),
+                                        icon: const Icon(
+                                          Icons.file_download_outlined,
+                                          size: 24,
+                                          color: AppTheme.mutedText,
+                                        ),
+                                        tooltip: 'PDF',
+                                      ),
+                                      IconButton(
+                                        padding: EdgeInsets.zero,
+                                        constraints: const BoxConstraints(
+                                          minWidth: 32,
+                                          minHeight: 32,
+                                        ),
+                                        onPressed: () =>
+                                            _printInvoice(nonNullableInvoice),
+                                        icon: const Icon(
+                                          Icons.print_rounded,
+                                          size: 24,
+                                          color: AppTheme.primary,
+                                        ),
+                                        tooltip: 'طباعة',
+                                      ),
+                                    ],
+                                  );
+                                })(),
                               ],
                             ],
                           ),
@@ -636,8 +699,12 @@ class _LaboratoryPageState extends State<LaboratoryPage> {
     );
   }
 
-  Widget _buildInsightsCard(ClinicAppController controller) {
-    final topServices = controller.topServices(limit: 3);
+  Widget _buildInsightsCard(BuildContext context) {
+    final reportsState = context.watch<ReportsCubit>().state;
+    List<RevenuePoint> topServices = [];
+    if (reportsState is ReportsLoaded) {
+      topServices = reportsState.topServices.take(3).toList();
+    }
 
     return SectionCard(
       title: 'ملاحظات تشغيلية',

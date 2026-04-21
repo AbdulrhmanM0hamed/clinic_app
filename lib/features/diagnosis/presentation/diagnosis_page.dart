@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-
-import '../../../app/app_controller.dart';
-import '../../../app/clinic_app_scope.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'cubits/diagnosis_cubit.dart';
+import '../../invoices/presentation/cubits/invoices_cubit.dart';
 import '../../../core/models/clinic_models.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/clinic_formatters.dart';
@@ -23,6 +23,15 @@ class _DiagnosisPageState extends State<DiagnosisPage> {
   String _searchQuery = '';
   String? _selectedCaseId;
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<DiagnosisCubit>().fetchCases();
+      context.read<InvoicesCubit>().fetchInvoices();
+    });
+  }
+
   List<DiagnosisCase> _filterCases(List<DiagnosisCase> cases) {
     return cases.where((item) {
       final matchesSource =
@@ -38,204 +47,276 @@ class _DiagnosisPageState extends State<DiagnosisPage> {
   }
 
   Future<void> _printInvoice(
-    ClinicAppController controller,
+    BuildContext context,
     DiagnosisCase diagnosisCase,
   ) async {
-    final invoice = controller.invoiceById(diagnosisCase.invoiceId);
+    final invoicesState = context.read<InvoicesCubit>().state;
+    if (invoicesState is! InvoicesLoaded) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('يرجى تحديث الصفحة أولاً لتحميل بيانات الفواتير.'),
+        ),
+      );
+      return;
+    }
+
+    final invoice = invoicesState.invoices.cast<ClinicInvoice?>().firstWhere(
+      (inv) => inv?.id == diagnosisCase.invoiceId,
+      orElse: () => null,
+    );
     if (invoice == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'لم يتم العثور على الفاتورة. جرب سحب الصفحة للأسفل لتحديث البيانات.',
+          ),
+          backgroundColor: Colors.orange,
+        ),
+      );
       return;
     }
 
     await InvoicePdfService.printInvoice(
       invoice: invoice,
-      doctorName: controller.doctorName,
+      doctorName: 'طبيب معتمد',
     );
   }
 
   Future<void> _shareInvoice(
-    ClinicAppController controller,
+    BuildContext context,
     DiagnosisCase diagnosisCase,
   ) async {
-    final invoice = controller.invoiceById(diagnosisCase.invoiceId);
+    final invoicesState = context.read<InvoicesCubit>().state;
+    if (invoicesState is! InvoicesLoaded) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('يرجى تحديث الصفحة أولاً لتحميل بيانات الفواتير.'),
+        ),
+      );
+      return;
+    }
+
+    final invoice = invoicesState.invoices.cast<ClinicInvoice?>().firstWhere(
+      (inv) => inv?.id == diagnosisCase.invoiceId,
+      orElse: () => null,
+    );
     if (invoice == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'لم يتم العثور على الفاتورة. جرب سحب الصفحة للأسفل لتحديث البيانات.',
+          ),
+          backgroundColor: Colors.orange,
+        ),
+      );
       return;
     }
 
     await InvoicePdfService.shareInvoice(
       invoice: invoice,
-      doctorName: controller.doctorName,
+      doctorName: 'طبيب معتمد',
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final controller = ClinicAppScope.of(context);
-    final width = MediaQuery.of(context).size.width;
-    final isWide = width >= 1200;
-    final allCases = controller.diagnosisCases;
-    final filteredCases = _filterCases(allCases);
+    return BlocBuilder<DiagnosisCubit, DiagnosisState>(
+      builder: (context, state) {
+        if (state is DiagnosisLoading) {
+          return const Center(child: CircularProgressIndicator());
+        } else if (state is DiagnosisError) {
+          return Center(child: Text(state.message));
+        }
 
-    DiagnosisCase? activeCase;
-    for (final item in filteredCases) {
-      if (item.id == _selectedCaseId) {
-        activeCase = item;
-        break;
-      }
-    }
-    activeCase ??= filteredCases.isNotEmpty ? filteredCases.first : null;
+        List<DiagnosisCase> allCases = [];
+        if (state is DiagnosisLoaded) {
+          allCases = state.cases;
+        }
 
-    final labCount = allCases
-        .where((item) => item.source == CaseSource.laboratory)
-        .length;
-    final receptionCount = allCases
-        .where((item) => item.source == CaseSource.reception)
-        .length;
-    final averageInvoice = controller.invoices.isEmpty
-        ? 0.0
-        : controller.invoices.fold<double>(
+        final width = MediaQuery.of(context).size.width;
+        final isWide = width >= 1200;
+        final filteredCases = _filterCases(allCases);
+
+        DiagnosisCase? activeCase;
+        for (final item in filteredCases) {
+          if (item.id == _selectedCaseId) {
+            activeCase = item;
+            break;
+          }
+        }
+        activeCase ??= filteredCases.isNotEmpty ? filteredCases.first : null;
+
+        final labCount = allCases
+            .where((item) => item.source == CaseSource.laboratory)
+            .length;
+        final receptionCount = allCases
+            .where((item) => item.source == CaseSource.reception)
+            .length;
+
+        // Compute avg from invoices cubit
+        final invoicesState = context.watch<InvoicesCubit>().state;
+        double averageInvoice = 0.0;
+        if (invoicesState is InvoicesLoaded &&
+            invoicesState.invoices.isNotEmpty) {
+          averageInvoice =
+              invoicesState.invoices.fold<double>(
                 0,
                 (sum, item) => sum + item.amount,
               ) /
-              controller.invoices.length;
+              invoicesState.invoices.length;
+        }
 
-    return SingleChildScrollView(
-      padding: EdgeInsets.all(isWide ? 28 : 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(26),
-            decoration: BoxDecoration(
-              color: AppTheme.softBackground,
-              borderRadius: BorderRadius.circular(30),
-              border: Border.all(color: AppTheme.border),
-            ),
-            child: Wrap(
-              spacing: 16,
-              runSpacing: 16,
-              alignment: WrapAlignment.spaceBetween,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: const [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    StatusChip(
-                      label: 'تشخيص الحالات',
-                      color: AppTheme.accent,
-                      icon: Icons.monitor_heart_rounded,
-                    ),
-                    SizedBox(height: 14),
-                    Text(
-                      'متابعة الحالات حسب الاستقبال أو التحاليل',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w900,
-                        color: AppTheme.ink,
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      'كل من تم استقباله أو إضافة طلب تحليل له يظهر هنا في سجل موحّد وقابل للفلترة.',
-                      style: TextStyle(color: AppTheme.mutedText),
-                    ),
-                  ],
-                ),
-                StatusChip(
-                  label: 'فلترة + بحث + طباعة فاتورة',
-                  color: AppTheme.primary,
-                  icon: Icons.tune_rounded,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final spacing = 16.0;
-              final crossAxisCount = constraints.maxWidth < 600 ? 2 : (constraints.maxWidth < 900 ? 3 : 4);
-              final itemWidth = (constraints.maxWidth - (spacing * (crossAxisCount - 1))) / crossAxisCount;
-
-              return Wrap(
-                spacing: spacing,
-                runSpacing: spacing,
-                children: [
-                  SizedBox(
-                    width: itemWidth,
-                    child: MetricCard(
-                      label: 'إجمالي الحالات',
-                      value: '${allCases.length}',
-                      icon: Icons.medical_information_rounded,
-                      highlightColor: AppTheme.primary,
-                    ),
-                  ),
-                  SizedBox(
-                    width: itemWidth,
-                    child: MetricCard(
-                      label: 'حالات الاستقبال',
-                      value: '$receptionCount',
-                      icon: Icons.person_add_alt_1_rounded,
-                      highlightColor: AppTheme.primary,
-                    ),
-                  ),
-                  SizedBox(
-                    width: itemWidth,
-                    child: MetricCard(
-                      label: 'حالات التحاليل',
-                      value: '$labCount',
-                      icon: Icons.biotech_rounded,
-                      highlightColor: AppTheme.secondary,
-                    ),
-                  ),
-                  SizedBox(
-                    width: itemWidth,
-                    child: MetricCard(
-                      label: 'متوسط الفاتورة',
-                      value: ClinicFormatters.formatCurrency(averageInvoice),
-                      icon: Icons.payments_rounded,
-                      highlightColor: AppTheme.accent,
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
-          const SizedBox(height: 24),
-          if (isWide)
-            Row(
+        return RefreshIndicator(
+          onRefresh: () async {
+            await context.read<DiagnosisCubit>().fetchCases();
+            await context.read<InvoicesCubit>().fetchInvoices();
+          },
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: EdgeInsets.all(isWide ? 28 : 20),
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  flex: 5,
-                  child: _buildCaseListCard(controller, filteredCases),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  flex: 6,
-                  child: _buildCaseDetailsCard(
-                    controller: controller,
-                    diagnosisCase: activeCase,
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(26),
+                  decoration: BoxDecoration(
+                    color: AppTheme.softBackground,
+                    borderRadius: BorderRadius.circular(30),
+                    border: Border.all(color: AppTheme.border),
+                  ),
+                  child: Wrap(
+                    spacing: 16,
+                    runSpacing: 16,
+                    alignment: WrapAlignment.spaceBetween,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: const [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          StatusChip(
+                            label: 'تشخيص الحالات',
+                            color: AppTheme.accent,
+                            icon: Icons.monitor_heart_rounded,
+                          ),
+                          SizedBox(height: 14),
+                          Text(
+                            'متابعة الحالات حسب الاستقبال أو التحاليل',
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w900,
+                              color: AppTheme.ink,
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            'كل من تم استقباله أو إضافة طلب تحليل له يظهر هنا في سجل موحّد وقابل للفلترة.',
+                            style: TextStyle(color: AppTheme.mutedText),
+                          ),
+                        ],
+                      ),
+                      StatusChip(
+                        label: 'فلترة + بحث + طباعة فاتورة',
+                        color: AppTheme.primary,
+                        icon: Icons.tune_rounded,
+                      ),
+                    ],
                   ),
                 ),
+                const SizedBox(height: 24),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final spacing = 16.0;
+                    final crossAxisCount = constraints.maxWidth < 600
+                        ? 2
+                        : (constraints.maxWidth < 900 ? 3 : 4);
+                    final itemWidth =
+                        (constraints.maxWidth -
+                            (spacing * (crossAxisCount - 1))) /
+                        crossAxisCount;
+
+                    return Wrap(
+                      spacing: spacing,
+                      runSpacing: spacing,
+                      children: [
+                        SizedBox(
+                          width: itemWidth,
+                          child: MetricCard(
+                            label: 'إجمالي الحالات',
+                            value: '${allCases.length}',
+                            icon: Icons.medical_information_rounded,
+                            highlightColor: AppTheme.primary,
+                          ),
+                        ),
+                        SizedBox(
+                          width: itemWidth,
+                          child: MetricCard(
+                            label: 'حالات الاستقبال',
+                            value: '$receptionCount',
+                            icon: Icons.person_add_alt_1_rounded,
+                            highlightColor: AppTheme.primary,
+                          ),
+                        ),
+                        SizedBox(
+                          width: itemWidth,
+                          child: MetricCard(
+                            label: 'حالات التحاليل',
+                            value: '$labCount',
+                            icon: Icons.biotech_rounded,
+                            highlightColor: AppTheme.secondary,
+                          ),
+                        ),
+                        SizedBox(
+                          width: itemWidth,
+                          child: MetricCard(
+                            label: 'متوسط الفاتورة',
+                            value: ClinicFormatters.formatCurrency(
+                              averageInvoice,
+                            ),
+                            icon: Icons.payments_rounded,
+                            highlightColor: AppTheme.accent,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+                const SizedBox(height: 24),
+                if (isWide)
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        flex: 5,
+                        child: _buildCaseListCard(filteredCases),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        flex: 6,
+                        child: _buildCaseDetailsCard(
+                          context: context,
+                          diagnosisCase: activeCase,
+                        ),
+                      ),
+                    ],
+                  )
+                else ...[
+                  _buildCaseListCard(filteredCases),
+                  const SizedBox(height: 16),
+                  _buildCaseDetailsCard(
+                    context: context,
+                    diagnosisCase: activeCase,
+                  ),
+                ],
               ],
-            )
-          else ...[
-            _buildCaseListCard(controller, filteredCases),
-            const SizedBox(height: 16),
-            _buildCaseDetailsCard(
-              controller: controller,
-              diagnosisCase: activeCase,
             ),
-          ],
-        ],
-      ),
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildCaseListCard(
-    ClinicAppController controller,
-    List<DiagnosisCase> filteredCases,
-  ) {
+  Widget _buildCaseListCard(List<DiagnosisCase> filteredCases) {
     return SectionCard(
       title: 'قائمة الحالات',
       subtitle:
@@ -309,6 +390,7 @@ class _DiagnosisPageState extends State<DiagnosisPage> {
                 final isSelected =
                     item.id == _selectedCaseId ||
                     (_selectedCaseId == null &&
+                        filteredCases.isNotEmpty &&
                         filteredCases.first.id == item.id);
 
                 return InkWell(
@@ -401,7 +483,7 @@ class _DiagnosisPageState extends State<DiagnosisPage> {
   }
 
   Widget _buildCaseDetailsCard({
-    required ClinicAppController controller,
+    required BuildContext context,
     required DiagnosisCase? diagnosisCase,
   }) {
     return SectionCard(
@@ -496,8 +578,7 @@ class _DiagnosisPageState extends State<DiagnosisPage> {
                             vertical: 12,
                           ),
                         ),
-                        onPressed: () =>
-                            _shareInvoice(controller, diagnosisCase),
+                        onPressed: () => _shareInvoice(context, diagnosisCase),
                         icon: const Icon(
                           Icons.file_download_outlined,
                           size: 18,
@@ -517,8 +598,7 @@ class _DiagnosisPageState extends State<DiagnosisPage> {
                             vertical: 12,
                           ),
                         ),
-                        onPressed: () =>
-                            _printInvoice(controller, diagnosisCase),
+                        onPressed: () => _printInvoice(context, diagnosisCase),
                         icon: const Icon(Icons.print_rounded, size: 18),
                         label: const Text(
                           'طباعة الفاتورة',

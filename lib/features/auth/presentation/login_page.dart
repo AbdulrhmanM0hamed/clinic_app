@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../app/app_controller.dart';
-import '../../../app/clinic_app_scope.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/clinic_formatters.dart';
 import '../../../core/widgets/status_chip.dart';
+import 'cubits/auth_cubit.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -30,93 +30,96 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  Future<void> _submit(ClinicAppController controller) async {
-    final success = await controller.login(
-      username: _usernameController.text,
-      password: _passwordController.text,
+  void _submit() {
+    context.read<AuthCubit>().login(
+      _usernameController.text,
+      _passwordController.text,
     );
+  }
 
-    if (!mounted || success) {
-      return;
-    }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'بيانات الدخول غير صحيحة. استخدم الحسابات التجريبية المعروضة.',
-        ),
-      ),
-    );
+  void _onLoginSuccess(BuildContext context) {
+    Navigator.of(context).pushReplacementNamed('/dashboard');
   }
 
   @override
   Widget build(BuildContext context) {
-    final controller = ClinicAppScope.of(context);
     final width = MediaQuery.of(context).size.width;
     final isWide = width >= 1100;
 
-    return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1280),
-              child: isWide
-                  ? Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Expanded(
-                        //   child: _MarketingPanel(controller: controller),
-                        // ),
-                        const SizedBox(width: 24),
-                        SizedBox(
-                          width: 420,
-                          child: _LoginCard(
-                            controller: controller,
-                            usernameController: _usernameController,
-                            passwordController: _passwordController,
-                            obscurePassword: _obscurePassword,
-                            onTogglePassword: () {
-                              setState(() {
-                                _obscurePassword = !_obscurePassword;
-                              });
-                            },
-                            onSubmit: () => _submit(controller),
-                          ),
+    return BlocConsumer<AuthCubit, AuthState>(
+      listener: (context, state) {
+        if (state is AuthFailure) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(state.message)));
+        } else if (state is AuthSuccess) {
+          _onLoginSuccess(context);
+        }
+      },
+      builder: (context, state) {
+        return Scaffold(
+          body: SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 1280),
+                  child: isWide
+                      ? Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // const Expanded(
+                            //   child: _MarketingPanel(),
+                            // ),
+                            const SizedBox(width: 24),
+                            SizedBox(
+                              width: 420,
+                              child: _LoginCard(
+                                usernameController: _usernameController,
+                                passwordController: _passwordController,
+                                obscurePassword: _obscurePassword,
+                                onTogglePassword: () {
+                                  setState(() {
+                                    _obscurePassword = !_obscurePassword;
+                                  });
+                                },
+                                onSubmit: _submit,
+                                isLoading: state is AuthLoading,
+                              ),
+                            ),
+                          ],
+                        )
+                      : Column(
+                          children: [
+                            //  const _MarketingPanel(compact: true),
+                            const SizedBox(height: 20),
+                            _LoginCard(
+                              usernameController: _usernameController,
+                              passwordController: _passwordController,
+                              obscurePassword: _obscurePassword,
+                              onTogglePassword: () {
+                                setState(() {
+                                  _obscurePassword = !_obscurePassword;
+                                });
+                              },
+                              onSubmit: _submit,
+                              isLoading: state is AuthLoading,
+                            ),
+                          ],
                         ),
-                      ],
-                    )
-                  : Column(
-                      children: [
-                        //   _MarketingPanel(controller: controller, compact: true),
-                        const SizedBox(height: 20),
-                        _LoginCard(
-                          controller: controller,
-                          usernameController: _usernameController,
-                          passwordController: _passwordController,
-                          obscurePassword: _obscurePassword,
-                          onTogglePassword: () {
-                            setState(() {
-                              _obscurePassword = !_obscurePassword;
-                            });
-                          },
-                          onSubmit: () => _submit(controller),
-                        ),
-                      ],
-                    ),
+                ),
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
 
 class _MarketingPanel extends StatelessWidget {
-  const _MarketingPanel({required this.controller, this.compact = false});
+  const _MarketingPanel({this.compact = false});
 
-  final ClinicAppController controller;
   final bool compact;
 
   @override
@@ -171,16 +174,10 @@ class _MarketingPanel extends StatelessWidget {
             children: [
               _GlassMetric(
                 label: 'إيراد اليوم',
-                value: ClinicFormatters.formatCurrency(controller.todayRevenue),
+                value: ClinicFormatters.formatCurrency(0),
               ),
-              _GlassMetric(
-                label: 'مراجعين اليوم',
-                value: '${controller.todayPatientsCount}',
-              ),
-              _GlassMetric(
-                label: 'إجمالي السجلات',
-                value: '${controller.totalPatients}',
-              ),
+              _GlassMetric(label: 'مراجعين اليوم', value: '0'),
+              _GlassMetric(label: 'إجمالي السجلات', value: '0'),
             ],
           ),
           const SizedBox(height: 32),
@@ -247,20 +244,20 @@ class _MarketingPanel extends StatelessWidget {
 
 class _LoginCard extends StatelessWidget {
   const _LoginCard({
-    required this.controller,
     required this.usernameController,
     required this.passwordController,
     required this.obscurePassword,
     required this.onTogglePassword,
     required this.onSubmit,
+    required this.isLoading,
   });
 
-  final ClinicAppController controller;
   final TextEditingController usernameController;
   final TextEditingController passwordController;
   final bool obscurePassword;
   final VoidCallback onTogglePassword;
   final VoidCallback onSubmit;
+  final bool isLoading;
 
   @override
   Widget build(BuildContext context) {
@@ -335,8 +332,8 @@ class _LoginCard extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: controller.isAuthenticating ? null : onSubmit,
-                icon: controller.isAuthenticating
+                onPressed: isLoading ? null : onSubmit,
+                icon: isLoading
                     ? const SizedBox(
                         height: 20,
                         width: 20,
@@ -346,11 +343,7 @@ class _LoginCard extends StatelessWidget {
                         ),
                       )
                     : const Icon(Icons.login_rounded),
-                label: Text(
-                  controller.isAuthenticating
-                      ? 'جاري التحقق...'
-                      : 'الدخول إلى النظام',
-                ),
+                label: Text(isLoading ? 'جاري التحقق...' : 'الدخول إلى النظام'),
               ),
             ),
           ],

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../app/clinic_app_scope.dart';
 import '../models/clinic_models.dart';
 import '../theme/app_theme.dart';
 import 'status_chip.dart';

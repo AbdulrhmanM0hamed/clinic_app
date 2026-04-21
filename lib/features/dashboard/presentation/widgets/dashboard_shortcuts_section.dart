@@ -1,6 +1,7 @@
+import 'package:clinic_app/features/reports/presentation/cubits/reports_cubit.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../app/app_controller.dart';
 import '../../../../core/models/clinic_models.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/section_card.dart';
@@ -10,11 +11,11 @@ import 'shortcut_tile.dart';
 class DashboardShortcutsSection extends StatelessWidget {
   const DashboardShortcutsSection({
     super.key,
-    required this.controller,
+    required this.onSelectSection,
     required this.isWide,
   });
 
-  final ClinicAppController controller;
+  final void Function(ClinicSection section) onSelectSection;
   final bool isWide;
 
   @override
@@ -23,15 +24,9 @@ class DashboardShortcutsSection extends StatelessWidget {
       return Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            flex: 6,
-            child: _buildShortcutsCard(),
-          ),
+          Expanded(flex: 6, child: _buildShortcutsCard()),
           const SizedBox(width: 16),
-          Expanded(
-            flex: 5,
-            child: _buildRecentInvoicesCard(),
-          ),
+          Expanded(flex: 5, child: _buildRecentInvoicesPanel(context)),
         ],
       );
     }
@@ -40,7 +35,7 @@ class DashboardShortcutsSection extends StatelessWidget {
       children: [
         _buildShortcutsCard(),
         const SizedBox(height: 16),
-        _buildRecentInvoicesCard(),
+        _buildRecentInvoicesPanel(context),
       ],
     );
   }
@@ -54,7 +49,7 @@ class DashboardShortcutsSection extends StatelessWidget {
           final spacing = 14.0;
           // Calculate width to fit exactly 2 tiles per row
           final tileWidth = (constraints.maxWidth - spacing) / 2;
-          
+
           return Wrap(
             spacing: spacing,
             runSpacing: spacing,
@@ -66,7 +61,7 @@ class DashboardShortcutsSection extends StatelessWidget {
                   subtitle: 'إدخال المرضى وفواتير الكشف',
                   icon: Icons.person_add_alt_1_rounded,
                   color: AppTheme.primary,
-                  onTap: () => controller.selectSection(ClinicSection.reception),
+                  onTap: () => onSelectSection(ClinicSection.reception),
                 ),
               ),
               SizedBox(
@@ -76,7 +71,7 @@ class DashboardShortcutsSection extends StatelessWidget {
                   subtitle: 'طلبات التحاليل وطباعة الفواتير',
                   icon: Icons.biotech_rounded,
                   color: AppTheme.secondary,
-                  onTap: () => controller.selectSection(ClinicSection.laboratory),
+                  onTap: () => onSelectSection(ClinicSection.laboratory),
                 ),
               ),
               SizedBox(
@@ -86,7 +81,7 @@ class DashboardShortcutsSection extends StatelessWidget {
                   subtitle: 'متابعة الحالات حسب المصدر',
                   icon: Icons.monitor_heart_rounded,
                   color: AppTheme.accent,
-                  onTap: () => controller.selectSection(ClinicSection.diagnosis),
+                  onTap: () => onSelectSection(ClinicSection.diagnosis),
                 ),
               ),
               SizedBox(
@@ -96,7 +91,7 @@ class DashboardShortcutsSection extends StatelessWidget {
                   subtitle: 'إحصائيات الإيرادات والاتجاهات',
                   icon: Icons.query_stats_rounded,
                   color: AppTheme.success,
-                  onTap: () => controller.selectSection(ClinicSection.reports),
+                  onTap: () => onSelectSection(ClinicSection.reports),
                 ),
               ),
             ],
@@ -106,15 +101,25 @@ class DashboardShortcutsSection extends StatelessWidget {
     );
   }
 
-  Widget _buildRecentInvoicesCard() {
-    final recentInvoices = controller.invoices.take(5).toList();
-    return SectionCard(
-      title: 'أحدث الفواتير',
-      subtitle: 'آخر العمليات التي دخلت في النظام حتى الآن.',
-      child: Column(
-        children:
-            recentInvoices.map((invoice) => InvoiceRow(invoice: invoice)).toList(),
-      ),
+  Widget _buildRecentInvoicesPanel(BuildContext context) {
+    return BlocBuilder<ReportsCubit, ReportsState>(
+      builder: (context, state) {
+        if (state is ReportsLoading) {
+          return const Center(child: CircularProgressIndicator());
+        } else if (state is ReportsLoaded) {
+          final recentInvoices = state.recentInvoices.take(5).toList();
+          return SectionCard(
+            title: 'أحدث الفواتير',
+            subtitle: 'آخر العمليات التي دخلت في النظام حتى الآن.',
+            child: Column(
+              children: recentInvoices
+                  .map((invoice) => InvoiceRow(invoice: invoice))
+                  .toList(),
+            ),
+          );
+        }
+        return const SizedBox.shrink();
+      },
     );
   }
 }
