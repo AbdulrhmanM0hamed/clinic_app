@@ -44,10 +44,7 @@ class ShortcutTile extends StatelessWidget {
             const SizedBox(height: 16),
             Text(
               label,
-              style: const TextStyle(
-                fontWeight: FontWeight.w800,
-                fontSize: 16,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
             ),
             const SizedBox(height: 8),
             Text(

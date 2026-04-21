@@ -14,12 +14,8 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final TextEditingController _usernameController = TextEditingController(
-    text: 'dr.salim',
-  );
-  final TextEditingController _passwordController = TextEditingController(
-    text: '123456',
-  );
+  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
 
   bool _obscurePassword = true;
 
@@ -284,8 +280,7 @@ class _LoginCard extends StatelessWidget {
             TextField(
               controller: usernameController,
               decoration: const InputDecoration(
-                labelText: 'اسم المستخدم',
-                hintText: 'dr.salim',
+                labelText: 'البريد الإلكتروني',
                 prefixIcon: Icon(Icons.person_rounded),
               ),
             ),
@@ -295,7 +290,6 @@ class _LoginCard extends StatelessWidget {
               obscureText: obscurePassword,
               decoration: InputDecoration(
                 labelText: 'كلمة المرور',
-                hintText: '123456',
                 prefixIcon: const Icon(Icons.lock_rounded),
                 suffixIcon: IconButton(
                   onPressed: onTogglePassword,
@@ -308,26 +302,26 @@ class _LoginCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 18),
-            Container(
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                color: AppTheme.softBackground,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'ملاحظات سريعة',
-                    style: TextStyle(fontWeight: FontWeight.w800),
-                  ),
-                  SizedBox(height: 10),
-                  Text('اسم المستخدم: dr.salim أو dr.mariam'),
-                  SizedBox(height: 4),
-                  Text('كلمة المرور: 123456'),
-                ],
-              ),
-            ),
+            // Container(
+            //   padding: const EdgeInsets.all(18),
+            //   decoration: BoxDecoration(
+            //     color: AppTheme.softBackground,
+            //     borderRadius: BorderRadius.circular(20),
+            //   ),
+            //   child: const Column(
+            //     crossAxisAlignment: CrossAxisAlignment.start,
+            //     children: [
+            //       Text(
+            //         'ملاحظات سريعة',
+            //         style: TextStyle(fontWeight: FontWeight.w800),
+            //       ),
+            //       SizedBox(height: 10),
+            //       Text('اسم المستخدم: dr.salim أو dr.mariam'),
+            //       SizedBox(height: 4),
+            //       Text('كلمة المرور: 123456'),
+            //     ],
+            //   ),
+            // ),
             const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
