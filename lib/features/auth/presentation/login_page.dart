@@ -62,12 +62,8 @@ class _LoginPageState extends State<LoginPage> {
                   constraints: const BoxConstraints(maxWidth: 1280),
                   child: isWide
                       ? Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            // const Expanded(
-                            //   child: _MarketingPanel(),
-                            // ),
-                            const SizedBox(width: 24),
                             SizedBox(
                               width: 420,
                               child: _LoginCard(
@@ -86,8 +82,8 @@ class _LoginPageState extends State<LoginPage> {
                           ],
                         )
                       : Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            //  const _MarketingPanel(compact: true),
                             const SizedBox(height: 20),
                             _LoginCard(
                               usernameController: _usernameController,
