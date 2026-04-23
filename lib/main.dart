@@ -21,4 +21,6 @@ void main() async {
 
   GoogleFonts.config.allowRuntimeFetching = false;
   runApp(const ClinicApp());
+  //build web app
+  //flutter build web --no-tree-shake-icons
 }
