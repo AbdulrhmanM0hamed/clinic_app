@@ -1,6 +1,6 @@
 # Privacy Policy for Eyadtk
 
-**Last updated:** 2026-04-25
+**Last updated:** April 25, 2026
 
 This Privacy Policy explains how the **Eyadtk** app handles user data and patient information.
 
@@ -14,7 +14,7 @@ The app is intended for use by clinic owners, reception staff, and authorized cl
 
 ## 2. Information Collected
 
-The app may store information entered by the user, including but not limited to:
+The app may collect and store information entered by the user, including but not limited to:
 
 - Patient name
 - National ID or identification number
@@ -27,6 +27,7 @@ The app may store information entered by the user, including but not limited to:
 - Invoice details
 - Service prices
 - Financial reports and revenue data
+- Clinic or user account information, if applicable
 
 This information is entered manually by the app user for clinic management purposes.
 
@@ -42,20 +43,27 @@ The information entered in the app is used only to provide the app’s core feat
 - Displaying recent invoices and clinic activity
 - Generating weekly, monthly, and yearly financial reports
 - Searching and filtering clinic records
+- Storing and syncing clinic data through the app backend
 
 We do not sell, rent, or trade user data or patient data to any third party.
 
 ## 4. Data Storage
 
-Data may be stored locally on the user’s device or within the app’s storage system, depending on the app version and configuration.
+The app uses Supabase as a backend service to store and manage app data.
 
-The user is responsible for maintaining the security of their device and for backing up important data when needed.
+Information entered in the app, such as patient records, invoices, lab test requests, diagnosis records, and financial reports, may be stored securely in a Supabase database.
+
+Supabase may process and store this data on secure cloud infrastructure in order to provide database, authentication, storage, and related backend services.
+
+The user is responsible for maintaining the security of their device and account access, and for ensuring that only authorized clinic staff can access the app and its stored data.
 
 ## 5. Data Sharing
 
-The app does not automatically share user or patient data with any third party.
+The app does not automatically share user or patient data with unrelated third parties for advertising or marketing purposes.
 
 The app may allow the user to manually share invoices or reports through device sharing options such as messaging apps, email, or printing services. Any such sharing is performed only by the user’s action and responsibility.
+
+Data may also be processed by Supabase as a backend service provider in order to operate the app’s database and related features.
 
 ## 6. App Permissions
 
@@ -63,6 +71,7 @@ The app may request certain permissions only when needed to provide specific fea
 
 - Storage or file access to save or share invoices
 - Printing or sharing access to generate and send invoices
+- Internet access to connect with the app backend
 - Other permissions required for the app’s basic functionality
 
 Permissions are used only for the purpose of enabling the related app feature.
@@ -71,7 +80,9 @@ Permissions are used only for the purpose of enabling the related app feature.
 
 We take reasonable measures to help protect the information stored and managed through the app.
 
-However, no method of electronic storage or transmission is completely secure. Users should keep their devices protected and ensure that only authorized people can access the app and stored clinic data.
+The app uses Supabase backend services, and Supabase provides security controls for hosted database and backend infrastructure, including encryption in transit and at rest.
+
+However, no method of electronic storage or transmission is completely secure. Users should keep their devices and account credentials protected and ensure that only authorized people can access the app and stored clinic data.
 
 ## 8. Children’s Privacy
 
@@ -81,15 +92,18 @@ We do not knowingly collect personal information from children through this app.
 
 ## 9. Third-Party Services
 
-The app may use third-party services required for app distribution, performance, or basic functionality.
+The app uses third-party services to provide core functionality and app distribution.
 
-These services may collect limited technical information according to their own privacy policies.
+These services may process limited technical or app-related data according to their own privacy policies and security practices.
 
-Examples may include:
+Third-party services used by the app may include:
 
+- Supabase, for backend database, authentication, storage, and related app services
 - Google Play services
 - Android system services
 - Printing or sharing services available on the user’s device
+
+Supabase provides backend infrastructure such as a Postgres database, authentication, storage, APIs, and related services. Data stored through Supabase is subject to Supabase’s privacy and security practices.
 
 ## 10. User Responsibility
 
@@ -98,7 +112,9 @@ The user is responsible for:
 - Entering data lawfully and accurately
 - Obtaining any necessary consent from patients when required
 - Protecting access to the device and app
+- Protecting account credentials, if login is used
 - Ensuring compliance with local laws and regulations related to medical or patient data
+- Ensuring that only authorized clinic staff can access patient and clinic records
 
 ## 11. Changes to This Privacy Policy
 
@@ -111,5 +127,5 @@ Users are encouraged to review this Privacy Policy periodically.
 For any questions about this Privacy Policy or the app, please contact us at:
 
 **Developer:** Abdulrahman  
-**Email:** bodamohmed60@gmail.com  
+**Email:** bodamohmed60@gmail.com
 **App Name:** Eyadtk / عيادتك
