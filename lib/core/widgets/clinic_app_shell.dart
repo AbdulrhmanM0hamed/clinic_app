@@ -75,7 +75,7 @@ class _ClinicAppShellState extends State<ClinicAppShell> {
           IconButton(
             tooltip: 'تسجيل الخروج',
             onPressed: _logout,
-            icon: const Icon(Icons.logout_rounded),
+            icon: const Icon(Icons.logout_rounded, color: AppTheme.danger),
           ),
           const SizedBox(width: 10),
         ],

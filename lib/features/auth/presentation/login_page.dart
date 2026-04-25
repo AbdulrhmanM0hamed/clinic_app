@@ -66,17 +66,23 @@ class _LoginPageState extends State<LoginPage> {
                           children: [
                             SizedBox(
                               width: 420,
-                              child: _LoginCard(
-                                usernameController: _usernameController,
-                                passwordController: _passwordController,
-                                obscurePassword: _obscurePassword,
-                                onTogglePassword: () {
-                                  setState(() {
-                                    _obscurePassword = !_obscurePassword;
-                                  });
-                                },
-                                onSubmit: _submit,
-                                isLoading: state is AuthLoading,
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const _LoginHeader(),
+                                  _LoginCard(
+                                    usernameController: _usernameController,
+                                    passwordController: _passwordController,
+                                    obscurePassword: _obscurePassword,
+                                    onTogglePassword: () {
+                                      setState(() {
+                                        _obscurePassword = !_obscurePassword;
+                                      });
+                                    },
+                                    onSubmit: _submit,
+                                    isLoading: state is AuthLoading,
+                                  ),
+                                ],
                               ),
                             ),
                           ],
@@ -84,7 +90,7 @@ class _LoginPageState extends State<LoginPage> {
                       : Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const SizedBox(height: 20),
+                            const _LoginHeader(),
                             _LoginCard(
                               usernameController: _usernameController,
                               passwordController: _passwordController,
@@ -105,6 +111,44 @@ class _LoginPageState extends State<LoginPage> {
           ),
         );
       },
+    );
+  }
+}
+
+class _LoginHeader extends StatelessWidget {
+  const _LoginHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      children: [
+        Image.asset(
+          'assets/images/logo.png',
+          height: 120,
+          errorBuilder: (context, error, stackTrace) => const Icon(
+            Icons.local_hospital_rounded,
+            size: 80,
+            color: Color(0xFF0F766E),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Text(
+          'عيادتك',
+          style: theme.textTheme.headlineMedium?.copyWith(
+            fontWeight: FontWeight.w900,
+            color: theme.colorScheme.primary,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'إدارة عيادتك بسهولة',
+          style: theme.textTheme.titleSmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 32),
+      ],
     );
   }
 }
@@ -265,6 +309,7 @@ class _LoginCard extends StatelessWidget {
               'تسجيل دخول الطبيب',
               style: theme.textTheme.headlineMedium?.copyWith(
                 fontWeight: FontWeight.w900,
+                fontSize: 25,
               ),
             ),
             const SizedBox(height: 10),
