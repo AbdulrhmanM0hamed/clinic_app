@@ -414,6 +414,8 @@ class _FinanceInvoiceRow extends StatelessWidget {
               children: [
                 Text(
                   invoice.patientName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontWeight: FontWeight.w900,
                     fontSize: 14,
@@ -422,6 +424,8 @@ class _FinanceInvoiceRow extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   '${invoice.source.label} • ${invoice.serviceLabel}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: AppTheme.mutedText,
                     fontSize: 12,
@@ -432,15 +436,19 @@ class _FinanceInvoiceRow extends StatelessWidget {
                   ClinicFormatters.formatDateTime(invoice.createdAt),
                   style: const TextStyle(
                     color: AppTheme.mutedText,
-                    fontSize: 11,
+                    fontSize: 10,
                   ),
                 ),
               ],
             ),
           ),
+          const SizedBox(width: 8),
           Text(
             ClinicFormatters.formatCurrency(invoice.amount),
-            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+            style: const TextStyle(
+              fontWeight: FontWeight.w800,
+              fontSize: 14,
+            ),
           ),
         ],
       ),

@@ -119,7 +119,12 @@ class _ClinicAppShellState extends State<ClinicAppShell> {
               destinations: items
                   .map(
                     (item) => NavigationDestination(
-                      icon: Icon(item.icon),
+                      icon: Icon(
+                        item.icon,
+                        color: _selectedSection == item.section
+                            ? AppTheme.primary
+                            : null,
+                      ),
                       label: item.label,
                     ),
                   )

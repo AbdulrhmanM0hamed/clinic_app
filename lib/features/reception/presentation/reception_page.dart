@@ -231,87 +231,134 @@ class _ReceptionPageState extends State<ReceptionPage> {
         final isWide = width >= 1180;
         final recentRecords = records.take(6).toList();
 
-        return SingleChildScrollView(
-          padding: EdgeInsets.all(isWide ? 28 : 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(26),
-                decoration: BoxDecoration(
-                  color: AppTheme.softBackground,
-                  borderRadius: BorderRadius.circular(30),
-                  border: Border.all(color: AppTheme.border),
-                ),
-                child: Wrap(
-                  spacing: 16,
-                  runSpacing: 16,
-                  alignment: WrapAlignment.spaceBetween,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    const Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+        final isLoading = state is ReceptionOperationLoading;
+
+        return Stack(
+          children: [
+            SingleChildScrollView(
+              padding: EdgeInsets.all(isWide ? 28 : 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(26),
+                    decoration: BoxDecoration(
+                      color: AppTheme.softBackground,
+                      borderRadius: BorderRadius.circular(30),
+                      border: Border.all(color: AppTheme.border),
+                    ),
+                    child: Wrap(
+                      spacing: 16,
+                      runSpacing: 16,
+                      alignment: WrapAlignment.spaceBetween,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
+                        const Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            StatusChip(
+                              label: 'الاستقبال',
+                              color: AppTheme.primary,
+                              icon: Icons.person_add_alt_1_rounded,
+                            ),
+                            SizedBox(height: 14),
+                            Text(
+                              'إدارة دخول المرضى والفواتير العلاجية',
+                              style: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.w900,
+                                color: AppTheme.ink,
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              'املأ بيانات المريض، حدّد نوع الخدمة، ثم احفظ أو اطبع الفاتورة مباشرة.',
+                              style: TextStyle(color: AppTheme.mutedText),
+                            ),
+                          ],
+                        ),
                         StatusChip(
-                          label: 'الاستقبال',
-                          color: AppTheme.primary,
-                          icon: Icons.person_add_alt_1_rounded,
-                        ),
-                        SizedBox(height: 14),
-                        Text(
-                          'إدارة دخول المرضى والفواتير العلاجية',
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w900,
-                            color: AppTheme.ink,
-                          ),
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                          'املأ بيانات المريض، حدّد نوع الخدمة، ثم احفظ أو اطبع الفاتورة مباشرة.',
-                          style: TextStyle(color: AppTheme.mutedText),
+                          label: _age == null
+                              ? 'العمر سيظهر تلقائيًا'
+                              : 'العمر: $_age سنة',
+                          color: AppTheme.accent,
+                          icon: Icons.cake_rounded,
                         ),
                       ],
                     ),
-                    StatusChip(
-                      label: _age == null
-                          ? 'العمر سيظهر تلقائيًا'
-                          : 'العمر: $_age سنة',
-                      color: AppTheme.accent,
-                      icon: Icons.cake_rounded,
-                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  if (isWide)
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(flex: 7, child: _buildFormCard()),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          flex: 5,
+                          child: Column(
+                            children: [
+                              _buildOperationsCard(recentRecords),
+                              const SizedBox(height: 16),
+                              //   _buildHelpCard(),
+                            ],
+                          ),
+                        ),
+                      ],
+                    )
+                  else ...[
+                    _buildFormCard(),
+                    const SizedBox(height: 16),
+                    _buildOperationsCard(recentRecords),
+                    const SizedBox(height: 16),
+                    //    _buildHelpCard(),
                   ],
-                ),
+                ],
               ),
-              const SizedBox(height: 24),
-              if (isWide)
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(flex: 7, child: _buildFormCard()),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      flex: 5,
-                      child: Column(
+            ),
+            if (isLoading)
+              Positioned.fill(
+                child: Container(
+                  color: Colors.black.withOpacity(0.15),
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.all(32),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 20,
+                            spreadRadius: 5,
+                          ),
+                        ],
+                      ),
+                      child: const Column(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          _buildOperationsCard(recentRecords),
-                          const SizedBox(height: 16),
-                          //   _buildHelpCard(),
+                          CircularProgressIndicator(
+                            strokeWidth: 3,
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(AppTheme.primary),
+                          ),
+                          SizedBox(height: 20),
+                          Text(
+                            'جاري حفظ البيانات...',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w900,
+                              fontSize: 16,
+                              color: AppTheme.ink,
+                            ),
+                          ),
                         ],
                       ),
                     ),
-                  ],
-                )
-              else ...[
-                _buildFormCard(),
-                const SizedBox(height: 16),
-                _buildOperationsCard(recentRecords),
-                const SizedBox(height: 16),
-                //    _buildHelpCard(),
-              ],
-            ],
-          ),
+                  ),
+                ),
+              ),
+          ],
         );
       },
     );
@@ -561,7 +608,7 @@ class _ReceptionPageState extends State<ReceptionPage> {
                   child: Column(
                     children: [
                       Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           Container(
                             height: 42,
@@ -583,6 +630,8 @@ class _ReceptionPageState extends State<ReceptionPage> {
                               children: [
                                 Text(
                                   record.patient.fullName,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
                                     fontWeight: FontWeight.w900,
                                     fontSize: 14,
@@ -591,83 +640,77 @@ class _ReceptionPageState extends State<ReceptionPage> {
                                 const SizedBox(height: 4),
                                 Text(
                                   '${record.visitType.label} • ${ClinicFormatters.formatCurrency(record.amount)}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
                                     color: AppTheme.mutedText,
                                     fontSize: 12,
                                   ),
                                 ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  ClinicFormatters.formatDateTime(
-                                    record.createdAt,
-                                  ),
-                                  style: const TextStyle(
-                                    color: AppTheme.mutedText,
-                                    fontSize: 11,
-                                  ),
-                                ),
                               ],
                             ),
                           ),
-                          Column(
-                            children: [
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  IconButton(
-                                    padding: EdgeInsets.zero,
-                                    constraints: const BoxConstraints(),
-                                    onPressed: () =>
-                                        _loadRecordForEditing(record),
-                                    icon: const Icon(
-                                      Icons.edit_rounded,
-                                      size: 20,
-                                      color: AppTheme.mutedText,
-                                    ),
-                                    tooltip: 'تعديل',
-                                  ),
-                                  if (invoice != null) ...[
-                                    const SizedBox(width: 8),
-                                    (() {
-                                      final nonNullableInvoice = invoice!;
-                                      return Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          IconButton(
-                                            padding: EdgeInsets.zero,
-                                            constraints: const BoxConstraints(),
-                                            onPressed: () => _shareInvoice(
-                                              nonNullableInvoice,
-                                            ),
-                                            icon: const Icon(
-                                              Icons.file_download_outlined,
-                                              size: 20,
-                                              color: AppTheme.mutedText,
-                                            ),
-                                            tooltip: 'PDF',
-                                          ),
-                                          const SizedBox(width: 8),
-                                          IconButton(
-                                            padding: EdgeInsets.zero,
-                                            constraints: const BoxConstraints(),
-                                            onPressed: () => _printInvoice(
-                                              nonNullableInvoice,
-                                            ),
-                                            icon: const Icon(
-                                              Icons.print_rounded,
-                                              size: 20,
-                                              color: AppTheme.primary,
-                                            ),
-                                            tooltip: 'طباعة',
-                                          ),
-                                        ],
-                                      );
-                                    })(),
-                                  ],
-                                ],
-                              ),
-                            ],
+                          const SizedBox(width: 8),
+                          // Edit button always visible on the right
+                          IconButton(
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            onPressed: () => _loadRecordForEditing(record),
+                            icon: const Icon(
+                              Icons.edit_rounded,
+                              size: 20,
+                              color: AppTheme.mutedText,
+                            ),
+                            tooltip: 'تعديل',
                           ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            ClinicFormatters.formatDateTime(record.createdAt),
+                            style: const TextStyle(
+                              color: AppTheme.mutedText,
+                              fontSize: 11,
+                            ),
+                          ),
+                          if (invoice != null)
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(
+                                    minWidth: 32,
+                                    minHeight: 32,
+                                  ),
+                                  onPressed: () => _shareInvoice(invoice!),
+                                  icon: const Icon(
+                                    Icons.file_download_outlined,
+                                    size: 18,
+                                    color: AppTheme.mutedText,
+                                  ),
+                                  tooltip: 'PDF',
+                                ),
+                                const SizedBox(width: 4),
+                                IconButton(
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(
+                                    minWidth: 32,
+                                    minHeight: 32,
+                                  ),
+                                  onPressed: () => _printInvoice(invoice!),
+                                  icon: const Icon(
+                                    Icons.print_rounded,
+                                    size: 18,
+                                    color: AppTheme.primary,
+                                  ),
+                                  tooltip: 'طباعة',
+                                ),
+                              ],
+                            ),
                         ],
                       ),
                     ],

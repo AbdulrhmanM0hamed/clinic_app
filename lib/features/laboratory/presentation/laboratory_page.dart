@@ -157,8 +157,6 @@ class _LaboratoryPageState extends State<LaboratoryPage> {
     if (!mounted) {
       return;
     }
-
-    _resetForm();
   }
 
   void _loadOrderForEditing(LaboratoryOrder order) {
@@ -257,88 +255,136 @@ class _LaboratoryPageState extends State<LaboratoryPage> {
         final isWide = width >= 1180;
         final orders = currentOrders.take(6).toList();
 
-        return SingleChildScrollView(
-          controller: _scrollController,
-          padding: EdgeInsets.all(isWide ? 28 : 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(26),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF4FBFB),
-                  borderRadius: BorderRadius.circular(30),
-                  border: Border.all(color: AppTheme.border),
-                ),
-                child: Wrap(
-                  spacing: 16,
-                  runSpacing: 16,
-                  alignment: WrapAlignment.spaceBetween,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    const Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+        final isLoading = state is LaboratoryOperationLoading;
+
+        return Stack(
+          children: [
+            SingleChildScrollView(
+              controller: _scrollController,
+              padding: EdgeInsets.all(isWide ? 28 : 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(26),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF4FBFB),
+                      borderRadius: BorderRadius.circular(30),
+                      border: Border.all(color: AppTheme.border),
+                    ),
+                    child: Wrap(
+                      spacing: 16,
+                      runSpacing: 16,
+                      alignment: WrapAlignment.spaceBetween,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
+                        const Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            StatusChip(
+                              label: 'التحاليل',
+                              color: AppTheme.secondary,
+                              icon: Icons.biotech_rounded,
+                            ),
+                            SizedBox(height: 14),
+                            Text(
+                              'تسجيل طلبات التحاليل وإصدار الفواتير',
+                              style: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.w900,
+                                color: AppTheme.ink,
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              'الصفحة مجهزة لإدخال بيانات العميل، اختيار التحليل، ثم حفظ أو طباعة الفاتورة فورًا.',
+                              style: TextStyle(color: AppTheme.mutedText),
+                            ),
+                          ],
+                        ),
                         StatusChip(
-                          label: 'التحاليل',
-                          color: AppTheme.secondary,
-                          icon: Icons.biotech_rounded,
-                        ),
-                        SizedBox(height: 14),
-                        Text(
-                          'تسجيل طلبات التحاليل وإصدار الفواتير',
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w900,
-                            color: AppTheme.ink,
-                          ),
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                          'الصفحة مجهزة لإدخال بيانات العميل، اختيار التحليل، ثم حفظ أو طباعة الفاتورة فورًا.',
-                          style: TextStyle(color: AppTheme.mutedText),
+                          label: _age == null
+                              ? 'العمر سيُحتسب تلقائيًا'
+                              : 'العمر: $_age سنة',
+                          color: AppTheme.accent,
+                          icon: Icons.cake_rounded,
                         ),
                       ],
                     ),
-                    StatusChip(
-                      label: _age == null
-                          ? 'العمر سيُحتسب تلقائيًا'
-                          : 'العمر: $_age سنة',
-                      color: AppTheme.accent,
-                      icon: Icons.cake_rounded,
-                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  if (isWide)
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(flex: 7, child: _buildFormCard()),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          flex: 5,
+                          child: Column(
+                            children: [
+                              _buildOrdersCard(orders),
+                              const SizedBox(height: 16),
+                              //  _buildInsightsCard(context),
+                            ],
+                          ),
+                        ),
+                      ],
+                    )
+                  else ...[
+                    _buildFormCard(),
+                    const SizedBox(height: 16),
+                    _buildOrdersCard(orders),
+                    const SizedBox(height: 16),
+                    //  _buildInsightsCard(context),
                   ],
-                ),
+                ],
               ),
-              const SizedBox(height: 24),
-              if (isWide)
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(flex: 7, child: _buildFormCard()),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      flex: 5,
-                      child: Column(
+            ),
+            if (isLoading)
+              Positioned.fill(
+                child: Container(
+                  color: Colors.black.withOpacity(0.15),
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.all(32),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 20,
+                            spreadRadius: 5,
+                          ),
+                        ],
+                      ),
+                      child: const Column(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          _buildOrdersCard(orders),
-                          const SizedBox(height: 16),
-                          //  _buildInsightsCard(context),
+                          CircularProgressIndicator(
+                            strokeWidth: 3,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              AppTheme.secondary,
+                            ),
+                          ),
+                          SizedBox(height: 20),
+                          Text(
+                            'جاري حفظ البيانات...',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w900,
+                              fontSize: 16,
+                              color: AppTheme.ink,
+                            ),
+                          ),
                         ],
                       ),
                     ),
-                  ],
-                )
-              else ...[
-                _buildFormCard(),
-                const SizedBox(height: 16),
-                _buildOrdersCard(orders),
-                const SizedBox(height: 16),
-                //  _buildInsightsCard(context),
-              ],
-            ],
-          ),
+                  ),
+                ),
+              ),
+          ],
         );
       },
     );
@@ -580,7 +626,7 @@ class _LaboratoryPageState extends State<LaboratoryPage> {
                   child: Column(
                     children: [
                       Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           Container(
                             height: 42,
@@ -602,6 +648,8 @@ class _LaboratoryPageState extends State<LaboratoryPage> {
                               children: [
                                 Text(
                                   order.patient.fullName,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
                                     fontWeight: FontWeight.w900,
                                     fontSize: 14,
@@ -610,85 +658,79 @@ class _LaboratoryPageState extends State<LaboratoryPage> {
                                 const SizedBox(height: 4),
                                 Text(
                                   '${order.analysisType} • ${ClinicFormatters.formatCurrency(order.amount)}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
                                     color: AppTheme.mutedText,
                                     fontSize: 12,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  ClinicFormatters.formatDateTime(
-                                    order.createdAt,
-                                  ),
-                                  style: const TextStyle(
-                                    color: AppTheme.mutedText,
-                                    fontSize: 11,
                                   ),
                                 ),
                               ],
                             ),
                           ),
                           const SizedBox(width: 8),
-                          Wrap(
-                            spacing: 12, // More comfortable spacing
-                            crossAxisAlignment: WrapCrossAlignment.center,
-                            children: [
-                              IconButton(
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(
-                                  minWidth: 32,
-                                  minHeight: 32,
-                                ),
-                                onPressed: () => _loadOrderForEditing(order),
-                                icon: const Icon(
-                                  Icons.edit_rounded,
-                                  size: 24,
-                                  color: AppTheme.mutedText,
-                                ),
-                                tooltip: 'تعديل',
-                              ),
-                              if (invoice != null) ...[
-                                (() {
-                                  final nonNullableInvoice = invoice!;
-                                  return Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      IconButton(
-                                        padding: EdgeInsets.zero,
-                                        constraints: const BoxConstraints(
-                                          minWidth: 32,
-                                          minHeight: 32,
-                                        ),
-                                        onPressed: () =>
-                                            _shareInvoice(nonNullableInvoice),
-                                        icon: const Icon(
-                                          Icons.file_download_outlined,
-                                          size: 24,
-                                          color: AppTheme.mutedText,
-                                        ),
-                                        tooltip: 'PDF',
-                                      ),
-                                      IconButton(
-                                        padding: EdgeInsets.zero,
-                                        constraints: const BoxConstraints(
-                                          minWidth: 32,
-                                          minHeight: 32,
-                                        ),
-                                        onPressed: () =>
-                                            _printInvoice(nonNullableInvoice),
-                                        icon: const Icon(
-                                          Icons.print_rounded,
-                                          size: 24,
-                                          color: AppTheme.primary,
-                                        ),
-                                        tooltip: 'طباعة',
-                                      ),
-                                    ],
-                                  );
-                                })(),
-                              ],
-                            ],
+                          IconButton(
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(
+                              minWidth: 32,
+                              minHeight: 32,
+                            ),
+                            onPressed: () => _loadOrderForEditing(order),
+                            icon: const Icon(
+                              Icons.edit_rounded,
+                              size: 20,
+                              color: AppTheme.mutedText,
+                            ),
+                            tooltip: 'تعديل',
                           ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            ClinicFormatters.formatDateTime(order.createdAt),
+                            style: const TextStyle(
+                              color: AppTheme.mutedText,
+                              fontSize: 11,
+                            ),
+                          ),
+                          if (invoice != null)
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(
+                                    minWidth: 32,
+                                    minHeight: 32,
+                                  ),
+                                  onPressed: () => _shareInvoice(invoice!),
+                                  icon: const Icon(
+                                    Icons.file_download_outlined,
+                                    size: 18,
+                                    color: AppTheme.mutedText,
+                                  ),
+                                  tooltip: 'PDF',
+                                ),
+                                const SizedBox(width: 4),
+                                IconButton(
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(
+                                    minWidth: 32,
+                                    minHeight: 32,
+                                  ),
+                                  onPressed: () => _printInvoice(invoice!),
+                                  icon: const Icon(
+                                    Icons.print_rounded,
+                                    size: 18,
+                                    color: AppTheme.primary,
+                                  ),
+                                  tooltip: 'طباعة',
+                                ),
+                              ],
+                            ),
                         ],
                       ),
                     ],
