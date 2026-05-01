@@ -6,9 +6,6 @@ class SupabaseConfig {
     await Supabase.initialize(
       url: ApiConstants.supabaseUrl,
       anonKey: ApiConstants.supabaseAnonKey,
-      authOptions: const FlutterAuthClientOptions(
-        localStorage: EmptyLocalStorage(),
-      ),
     );
   }
 

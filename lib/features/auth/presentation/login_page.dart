@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/clinic_formatters.dart';
@@ -20,6 +21,35 @@ class _LoginPageState extends State<LoginPage> {
   bool _obscurePassword = true;
 
   @override
+  void initState() {
+    super.initState();
+    _loadCredentials();
+  }
+
+  Future<void> _loadCredentials() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedUsername = prefs.getString('saved_username');
+    final savedPassword = prefs.getString('saved_password');
+
+    if (mounted) {
+      setState(() {
+        if (savedUsername != null) {
+          _usernameController.text = savedUsername;
+        }
+        if (savedPassword != null) {
+          _passwordController.text = savedPassword;
+        }
+      });
+    }
+  }
+
+  Future<void> _saveCredentials() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('saved_username', _usernameController.text);
+    await prefs.setString('saved_password', _passwordController.text);
+  }
+
+  @override
   void dispose() {
     _usernameController.dispose();
     _passwordController.dispose();
@@ -27,6 +57,7 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   void _submit() {
+    _saveCredentials();
     context.read<AuthCubit>().login(
       _usernameController.text,
       _passwordController.text,
